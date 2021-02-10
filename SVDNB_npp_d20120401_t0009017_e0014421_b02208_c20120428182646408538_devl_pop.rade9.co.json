@@ -1,0 +1,69 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "SVDNB_npp_d20120401_t0009017_e0014421_b02208_c20120428182646408538_devl_pop.rade9.co",
+    "properties": {
+        "datetime": "2012-04-01T00:09:01Z"
+    },
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -5.00208333335,
+                    61.00208322135
+                ],
+                [
+                    -5.00208333335,
+                    75.00208333335
+                ],
+                [
+                    119.99791766665,
+                    75.00208333335
+                ],
+                [
+                    119.99791766665,
+                    61.00208322135
+                ],
+                [
+                    -5.00208333335,
+                    61.00208322135
+                ]
+            ]
+        ]
+    },
+    "links": [
+        {
+            "rel": "root",
+            "href": "https://globalnightlight.s3.amazonaws.com/catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "https://globalnightlight.s3.amazonaws.com/201204/201204_catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "self",
+            "href": "https://globalnightlight.s3.amazonaws.com/201204/SVDNB_npp_d20120401_t0009017_e0014421_b02208_c20120428182646408538_devl_pop.rade9.co.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "collection",
+            "href": "https://globalnightlight.s3.amazonaws.com/VIIRS_npp.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "image": {
+            "href": "https://globalnightlight.s3.amazonaws.com/201204/SVDNB_npp_d20120401_t0009017_e0014421_b02208_c20120428182646408538_devl_pop.rade9.co.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+        }
+    },
+    "bbox": [
+        -5.00208333335,
+        61.00208322135,
+        119.99791766665,
+        75.00208333335
+    ]
+}

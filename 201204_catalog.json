@@ -1,0 +1,27 @@
+{
+    "id": "VIIRS_DNB_rade9_201204",
+    "stac_version": "1.0.0-beta.2",
+    "description": "Visible radiance from VIIRS DNB for 2012/04.",
+    "links": [
+        {
+            "rel": "self",
+            "href": "https://globalnightlight.s3.amazonaws.com/201204/201204_catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "root",
+            "href": "https://globalnightlight.s3.amazonaws.com/catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "https://globalnightlight.s3.amazonaws.com/VIIRS_npp.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "item",
+            "href": "https://globalnightlight.s3.amazonaws.com/201204/SVDNB_npp_d20120401_t0009017_e0014421_b02208_c20120428182646408538_devl_pop.rade9.co.json",
+            "type": "application/json"
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+{
+  "stac_version": "1.0.0-beta.2",
+  "id": "nightlights",
+  "description": "Catalog of Nightlights Imagery",
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://globalnightlight.s3.amazonaws.com/catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "https://globalnightlight.s3.amazonaws.com/VIIRS_npp_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "https://globalnightlight.s3.amazonaws.com/DMSP_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "root",
+      "href": "https://globalnightlight.s3.amazonaws.com/catalog.json",
+      "type": "application/json"
+    }
+  ]
+}
