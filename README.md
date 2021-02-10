@@ -1,5 +1,5 @@
 ## Example hierarchy
-
+```
                                 catalog.json
                                       |
                               VIIRS_npp.json
@@ -7,6 +7,7 @@
                              201204_catalog.json
                                       |
 SVDNB_npp_d20120401_t0009017_e0014421_b02208_c20120428182646408538_devl_pop.rade9.co.json
+```
 
 (The item json also references VIIRS_npp as it is part of the collection).
 
