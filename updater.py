@@ -44,7 +44,7 @@ for subcat in existing_catalog.get_children():
         subcat.remove_links('item')
         for link in links:
             if link.rel == 'item':
-                absolute_target = f'{bucket_path}/{ym}/{link.target[2:]}'
+                absolute_target = f'https://globalnightlight.s3.amazonaws.com/{ym}/{link.target[2:]}'
                 updated_link = Link(
                     'item',
                     target=absolute_target,
