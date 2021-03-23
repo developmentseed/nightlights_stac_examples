@@ -93,7 +93,9 @@ def add_assets(item, root_url, segment, creation_stamp):
         href=urljoin(
             f"{root_url}/",
             f"GDNBO_{segment}_noaa_ops.samples.co.tif"
-        )
+        ),
+        media_type=MediaType.COG,
+        roles=["data"]
     )
     item.add_asset("geolocation_sample", geolocation_sample_asset)
 
@@ -153,6 +155,10 @@ start_time = datetime.strptime(
     f"{id_components[2][1:]}{id_components[3][1:]}",
     "%Y%m%d%H%M%S%f"
 )
+creation_time = datetime.strptime(
+    creation_stamp[1:],
+    "%Y%m%d%H%M%S%f"
+)
 new_item = Item(
     id=orbital_segment,
     bbox=existing_item.bbox,
@@ -166,9 +172,14 @@ end_time = datetime.strptime(
 )
 new_item.common_metadata.start_datetime = start_time
 new_item.common_metadata.end_datetime = end_time
+new_item.common_metadata.created = creation_time
 new_item.common_metadata.gsd = 750
+new_item.common_metadata.platform = "s-npp"
+new_item.common_metadata.instruments = ["viirs"]
 
 add_assets(new_item, root_url, orbital_segment, creation_stamp)
 add_links(new_item, root_url, orbital_segment)
 new_item.validate()
-print(json.dumps(new_item.to_dict()))
+with open(f"{orbital_segment}.json", 'w') as outfile:
+    json.dump(new_item.to_dict(), outfile)
+# print(json.dumps(new_item.to_dict()))
