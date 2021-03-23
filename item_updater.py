@@ -1,10 +1,12 @@
 from urllib.parse import urlparse, urlunparse, urljoin
 import requests
-from pystac import STAC_IO, Item, Asset, MediaType
+from pystac import STAC_IO, Item, Asset, Link, MediaType
 from pystac.extensions.eo import Band
 from datetime import datetime
 import boto3
 import json
+
+bucket_path = "https://globalnightlight.s3.amazonaws.com"
 
 
 def http_read_method(uri):
@@ -96,6 +98,35 @@ def add_assets(item, root_url, segment, creation_stamp):
     item.add_asset("geolocation_sample", geolocation_sample_asset)
 
 
+def add_links(item, root_url, segment):
+    item.set_self_href(
+        urljoin(
+            f"{root_url}/",
+            f"{segment}.json"
+        )
+    )
+
+    parent_link = Link(
+        "parent",
+        target=urljoin(
+            f"{root_url}/",
+            "catalog.json"
+        ),
+        media_type=MediaType.JSON
+    )
+    item.add_link(parent_link)
+
+    root_link = Link(
+        "root",
+        target=urljoin(
+            f"{bucket_path}/",
+            "catalog.json"
+        ),
+        media_type=MediaType.JSON
+    )
+    item.add_link(root_link)
+
+
 STAC_IO.read_text_method = http_read_method
 STAC_IO.write_text_method = s3_write_method
 
@@ -138,5 +169,6 @@ new_item.common_metadata.end_datetime = end_time
 new_item.common_metadata.gsd = 750
 
 add_assets(new_item, root_url, orbital_segment, creation_stamp)
+add_links(new_item, root_url, orbital_segment)
 new_item.validate()
 print(json.dumps(new_item.to_dict()))
