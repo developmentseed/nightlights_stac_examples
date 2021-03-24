@@ -172,18 +172,28 @@ def get_key(obj):
     return key.split("/")[1]
 
 
+def get_existing_item(prefix_url, segment_files):
+    filtered = [
+        segment_file for segment_file in segment_files
+        if splitext(segment_file)[1] == ".json"
+    ]
+    item_url = urljoin(f"{prefix_url}/", filtered[0])
+    existing_item = Item.from_file(item_url)
+    return existing_item
+
+
 def create_item(segment, segment_files, prefix_url):
-    # existing_item = Item.from_file(item_url)
     segment_components = segment.split("_")
 
     start_time = datetime.strptime(
         f"{segment_components[1][1:]}{segment_components[2][1:]}",
         "%Y%m%d%H%M%S%f"
     )
+    existing_item = get_existing_item(prefix_url, segment_files)
     new_item = Item(
         id=segment,
-        bbox=None,
-        geometry=None,
+        bbox=existing_item.bbox,
+        geometry=existing_item.geometry,
         datetime=start_time,
         properties={},
     )
