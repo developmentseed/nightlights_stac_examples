@@ -1,4 +1,4 @@
-from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.parse import urlparse, urljoin
 import requests
 from pystac import STAC_IO, Item, Asset, Link, MediaType
 from pystac.extensions.eo import Band
@@ -6,6 +6,7 @@ from datetime import datetime
 import boto3
 import json
 from iteration_utilities import groupedby
+from os.path import splitext
 
 bucket_path = "https://globalnightlight.s3.amazonaws.com"
 
@@ -29,82 +30,94 @@ def s3_write_method(uri, txt):
         STAC_IO.default_write_text_method(uri, txt)
 
 
-def add_assets(item, root_url, segment, creation_stamp):
-    item.ext.enable("eo")
-
-    dnb_asset = Asset(
-        href=urljoin(
-            f"{root_url}/",
-            f"SVDNB_{segment}_{creation_stamp}_noaa_ops.rade9.co.tif"
-        ),
+def add_dnb_asset(item, href, asset_key):
+    asset = Asset(
+        href=href,
         media_type=MediaType.COG,
         roles=["data"]
     )
     dnb_bands = [
         Band.create(
-            name="DNB",
+            name=asset_key,
             common_name="day night band",
             center_wavelength=0.7,
             full_width_half_max=0.4
         )
     ]
-    item.ext.eo.set_bands(dnb_bands, dnb_asset)
-    item.add_asset("DNB", dnb_asset)
+    item.ext.eo.set_bands(dnb_bands, asset)
+    item.add_asset(asset_key, asset)
 
-    m15_asset = Asset(
-        href=urljoin(
-            f"{root_url}/",
-            f"SVM15_{segment}_{creation_stamp}_noaa_ops.rad.co.tif"
-        ),
+
+def add_m15_asset(item, href, asset_key):
+    asset = Asset(
+        href=href,
         media_type=MediaType.COG,
         roles=["data"]
     )
     m15_bands = [
         Band.create(
-            name="M15",
+            name=asset_key,
             common_name="thermal infrared",
             center_wavelength=10.763,
             full_width_half_max=1
         )
     ]
-    item.ext.eo.set_bands(m15_bands, m15_asset)
-    item.add_asset("M15", m15_asset)
+    item.ext.eo.set_bands(m15_bands, asset)
+    item.add_asset(asset_key, asset)
 
-    vflag_asset = Asset(
-        href=urljoin(
-            f"{root_url}/",
-            f"{segment}_vflag.co.tif"
-        ),
-        media_type=MediaType.COG,
-        roles=["data-mask"]
-    )
-    item.add_asset("VFLAG", vflag_asset)
 
-    gdnbo_asset = Asset(
-        href=urljoin(
-            f"{root_url}/",
-            f"GDNBO_{segment}_noaa_ops.li.co.tif"
-        ),
+def add_asset(item, href, asset_key):
+    asset = Asset(
+        href=href,
         media_type=MediaType.COG,
         roles=["data"]
     )
-    item.add_asset("GDNBO", gdnbo_asset)
+    item.add_asset(asset_key, asset)
 
-    geolocation_sample_asset = Asset(
-        href=urljoin(
-            f"{root_url}/",
-            f"GDNBO_{segment}_noaa_ops.samples.co.tif"
-        ),
-        media_type=MediaType.COG,
-        roles=["data"]
+
+def parse_creation_date(segment_file):
+    components = segment_file.split("_")
+    creation_time = datetime.strptime(
+        components[6][1:],
+        "%Y%m%d%H%M%S%f"
     )
-    item.add_asset("geolocation_sample", geolocation_sample_asset)
+    return creation_time
 
 
-def add_links(item, root_url, segment):
+def process_segment_files(item, prefix_url, segment_files):
+    item.ext.enable("eo")
+    for segment_file in segment_files:
+        href = urljoin(f"{prefix_url}/", segment_file)
+        components = segment_file.split("_")
+        if components[0] == "SVDNB":
+            name, ext = splitext(segment_file)
+            if ext == ".tif":
+                key = "DNB"
+                add_dnb_asset(item, href, key)
+                date = parse_creation_date(segment_file)
+                item.common_metadata.set_created(date, item.assets[key])
+
+        if components[0] == "SVM15":
+            key = "M15"
+            add_m15_asset(item, href, key)
+            date = parse_creation_date(segment_file)
+            item.common_metadata.set_created(date, item.assets[key])
+
+        if components[0] == "GDNBO" or components[0] == "GDTCN":
+            if "samples" in segment_file:
+                key = "SAMPLE"
+                add_asset(item, href, key)
+            else:
+                key = "LI"
+                add_asset(item, href, key)
+            date = parse_creation_date(segment_file)
+            item.common_metadata.set_created(date, item.assets[key])
+
+
+def add_links(item, prefix_url, segment):
     item.set_self_href(
         urljoin(
-            f"{root_url}/",
+            f"{prefix_url}/",
             f"{segment}.json"
         )
     )
@@ -112,7 +125,7 @@ def add_links(item, root_url, segment):
     parent_link = Link(
         "parent",
         target=urljoin(
-            f"{root_url}/",
+            f"{prefix_url}/",
             "catalog.json"
         ),
         media_type=MediaType.JSON
@@ -133,16 +146,14 @@ def add_links(item, root_url, segment):
 STAC_IO.read_text_method = http_read_method
 STAC_IO.write_text_method = s3_write_method
 
+
+prefix = "npp_202008"
 s3 = boto3.client('s3')
 paginator = s3.get_paginator('list_objects_v2')
 response_iterator = paginator.paginate(
     Bucket="globalnightlight",
-    Prefix="npp_202008"
+    Prefix=prefix
 )
-
-objects = []
-for response in response_iterator:
-    objects = objects + response["Contents"]
 
 
 def get_segment(obj):
@@ -161,59 +172,53 @@ def get_key(obj):
     return key.split("/")[1]
 
 
-dct = groupedby(objects, key=get_segment, keep=get_key)
-for key in dct.keys():
+def create_item(segment, segment_files, prefix_url):
+    # existing_item = Item.from_file(item_url)
+    segment_components = segment.split("_")
+
+    start_time = datetime.strptime(
+        f"{segment_components[1][1:]}{segment_components[2][1:]}",
+        "%Y%m%d%H%M%S%f"
+    )
+    new_item = Item(
+        id=segment,
+        bbox=None,
+        geometry=None,
+        datetime=start_time,
+        properties={},
+    )
+    end_time = datetime.strptime(
+        f"{segment_components[1][1:]}{segment_components[3][1:]}",
+        "%Y%m%d%H%M%S%f"
+    )
+    new_item.common_metadata.start_datetime = start_time
+    new_item.common_metadata.end_datetime = end_time
+    new_item.common_metadata.gsd = 750
+    new_item.common_metadata.platform = "s-npp"
+    new_item.common_metadata.instruments = ["viirs"]
+
+    process_segment_files(new_item, prefix_url, segment_files)
+    vflag_href = urljoin(
+        f"{prefix_url}/",
+        f"{segment}.co.tif"
+    )
+    add_asset(new_item, vflag_href, "VFLAG")
+    add_links(new_item, prefix_url, segment)
+    new_item.validate()
+    print(json.dumps(new_item.to_dict()))
+
+    # with open(f"{orbital_segment}.json", 'w') as outfile:
+        # json.dump(new_item.to_dict(), outfile)
+
+
+objects = []
+for response in response_iterator:
+    objects = objects + response["Contents"]
+
+grouped_objects = groupedby(objects, key=get_segment, keep=get_key)
+
+for key in grouped_objects.keys():
     print(key)
     if key is not None:
-        print(dct[key])
-
-# item_url = "https://globalnightlight.s3.amazonaws.com/npp_202008/SVDNB_npp_d20200801_t0048355_e0054159_b45395_c20200801045415683718_noac_ops.rade9.co.json"
-# parsed_url = urlparse(item_url)
-# root_key = parsed_url.path.split("/")[1]
-# root_url = urlunparse((
-    # parsed_url.scheme,
-    # parsed_url.netloc,
-    # root_key,
-    # None,
-    # None,
-    # None
-# ))
-
-# existing_item = Item.from_file(item_url)
-# id_components = existing_item.id.split("_")
-# orbital_segment = f"{id_components[1]}_{id_components[2]}_" \
-    # f"{id_components[3]}_{id_components[4]}_{id_components[5]}"
-# creation_stamp = id_components[6]
-
-# start_time = datetime.strptime(
-    # f"{id_components[2][1:]}{id_components[3][1:]}",
-    # "%Y%m%d%H%M%S%f"
-# )
-# creation_time = datetime.strptime(
-    # creation_stamp[1:],
-    # "%Y%m%d%H%M%S%f"
-# )
-# new_item = Item(
-    # id=orbital_segment,
-    # bbox=existing_item.bbox,
-    # geometry=existing_item.geometry,
-    # datetime=start_time,
-    # properties={},
-# )
-# end_time = datetime.strptime(
-    # f"{id_components[2][1:]}{id_components[4][1:]}",
-    # "%Y%m%d%H%M%S%f"
-# )
-# new_item.common_metadata.start_datetime = start_time
-# new_item.common_metadata.end_datetime = end_time
-# new_item.common_metadata.created = creation_time
-# new_item.common_metadata.gsd = 750
-# new_item.common_metadata.platform = "s-npp"
-# new_item.common_metadata.instruments = ["viirs"]
-
-# add_assets(new_item, root_url, orbital_segment, creation_stamp)
-# add_links(new_item, root_url, orbital_segment)
-# new_item.validate()
-# with open(f"{orbital_segment}.json", 'w') as outfile:
-    # json.dump(new_item.to_dict(), outfile)
-# print(json.dumps(new_item.to_dict()))
+        url = urljoin(bucket_path, prefix)
+        create_item(key, grouped_objects[key], url)
